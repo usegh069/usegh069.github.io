@@ -1,51 +1,75 @@
-# Sample workflow for building and deploying a Jekyll site to GitHub Pages
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+name: Build and Deploy WASM
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  # Build job
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
 
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    - uses: actions/checkout@v2
+
+    - name: Setup Emscripten
+      uses: mymindstorm/setup-emsdk@v11
+
+    - name: Verify Emscripten
+      run: emcc -v
+
+    - name: Install and build Boost
+      run: |
+        wget https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+        tar xzf boost_1_76_0.tar.gz
+        cd boost_1_76_0
+        ./bootstrap.sh
+        ./b2 headers
+        echo "BOOST_ROOT=$PWD" >> $GITHUB_ENV
+
+    - name: Install and build sodium
+      run: |
+        wget https://download.libsodium.org/libsodium/releases/LATEST.tar.gz
+        gzip -d LATEST.tar.gz
+        tar -xf LATEST.tar
+        cd libsodium-stable
+        ./configure
+        make && make check
+        sudo make install
+      
+
+    - name: Modify Makefile
+      run: |
+        sed -i 's|-I/opt/local/include|-I$(BOOST_ROOT)|g' Makefile
+        sed -i 's|CCPARAM = -s WASM=1|CCPARAM = -s WASM=1 -s USE_BOOST_HEADERS=1|g' Makefile
+
+    - name: Build WASM (Debug)
+      run: make
+      env:
+        BOOST_ROOT: ${{ env.BOOST_ROOT }}
+
+    - name: Build WASM (Release)
+      run: make TYPE=release
+      env:
+        BOOST_ROOT: ${{ env.BOOST_ROOT }}
+
+    - name: Copy additional files
+      run: |
+        cp post.js build/debug/
+        cp template.html build/debug/
+        cp post.js build/release/
+        cp template.html build/release/
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./build
+
+    - name: Start local server for testing
+      run: |
+        python -m http.server 8000 --directory build/debug &
+        sleep 5
+        curl http://localhost:8000/miner.html
