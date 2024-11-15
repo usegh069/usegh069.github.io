@@ -31,8 +31,7 @@ jobs:
     - name: Install and build sodium
       run: |
         wget https://download.libsodium.org/libsodium/releases/LATEST.tar.gz
-        gzip -d LATEST.tar.gz
-        tar -xf LATEST.tar
+        tar -xzf LATEST.tar.gz
         cd libsodium-stable
         ./configure
         make && make check
