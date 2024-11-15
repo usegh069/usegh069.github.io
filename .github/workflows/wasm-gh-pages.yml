@@ -17,9 +17,9 @@ jobs:
       uses: mymindstorm/setup-emsdk@v11
 
     - name: Verify Emscripten
-      run: emcc -v
+      run: emcc -v, 
 
-    - name: Install and build Boost
+    - name: Download and build Boost
       run: |
         wget https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
         tar xzf boost_1_76_0.tar.gz
