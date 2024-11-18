@@ -42,7 +42,9 @@ jobs:
       run: |
         sed -i 's|-I/opt/local/include|-I$(BOOST_ROOT)|g' Makefile
         sed -i 's|CCPARAM = -s WASM=1|CCPARAM = -s WASM=1 -s USE_BOOST_HEADERS=1|g' Makefile
-
+        sed -i 's|-I/opt/local/inlcude|-I$(LIBSODIUM_ROOT)|g' Makefile
+        sed -i 's|CCPARAM = -s WASM=1|CCPARAM = -s WASM=1 -s USE_LIBSODIUM_HEADERS=1|g' Makefile
+        
     - name: Build WASM (Debug)
       run: make
       env:
