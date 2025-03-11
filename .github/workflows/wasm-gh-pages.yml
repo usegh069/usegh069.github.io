@@ -11,17 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
 
     - name: Setup Emscripten
-      uses: mymindstorm/setup-emsdk@v11
+      uses: mymindstorm/setup-emsdk@v11.0.0
 
     - name: Verify Emscripten
       run: emcc --version /src/main.cpp
 
     - name: Download and build Boost
       run: |
-        wget https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+        wget https://sourceforge.net/projects/boost/files/boost/1.76.0/boost_1_76_0.tar.gz
         tar xzf boost_1_76_0.tar.gz
         cd boost_1_76_0
         ./bootstrap.sh
@@ -36,7 +36,6 @@ jobs:
         ./configure
         make && make check
         sudo make install
-      
 
     - name: Modify Makefile
       run: |
@@ -44,7 +43,7 @@ jobs:
         sed -i 's|CCPARAM = -s WASM=1|CCPARAM = -s WASM=1 -s USE_BOOST_HEADERS=1|g' Makefile
         sed -i 's|-I/opt/local/inlcude|-I$(LIBSODIUM_ROOT)|g' Makefile
         sed -i 's|CCPARAM = -s WASM=1|CCPARAM = -s WASM=1 -s USE_LIBSODIUM_HEADERS=1|g' Makefile
-        
+
     - name: Build WASM (Debug)
       run: make
       env:
@@ -63,7 +62,7 @@ jobs:
         cp template.html build/release/
 
     - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v3.8.0
       if: github.ref == 'refs/heads/main'
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
